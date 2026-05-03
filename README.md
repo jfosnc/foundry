@@ -1,13 +1,17 @@
 # Foundry VTT Two-Tier Topology
 
-This Podman Compose stack runs Caddy as the public reverse proxy and Foundry VTT v14 as a private back-end service.
+This Podman Compose stack runs Caddy as a local HTTP origin for a Cloudflare Tunnel connector and Foundry VTT v14 as a private back-end service.
 
 ```text
 Internet
    |
-   | 80/443
+   | HTTPS
    v
-Caddy reverse proxy
+Cloudflare
+   |
+   | Tunnel to local HTTP origin
+   v
+Caddy reverse proxy :8080
    |
    | backend container network
    v
@@ -17,7 +21,7 @@ Foundry VTT :30000
 ## Files
 
 - `compose.yaml` defines the two service tiers and persistent container volumes.
-- `Caddyfile` terminates TLS and proxies traffic to Foundry.
+- `Caddyfile` accepts local HTTP from Cloudflare Tunnel and proxies traffic to Foundry.
 - `.env.example` lists the required settings.
 - `.env` is your local, ignored configuration file.
 
@@ -32,21 +36,26 @@ cp .env.example .env
 Edit `.env` and set:
 
 - `FOUNDRY_HOSTNAME` to the DNS name that points to this server.
-- `ACME_EMAIL` to your email address for Let's Encrypt notices.
 - `FOUNDRY_RELEASE_URL` to a timed download URL from your Foundry account, or set `FOUNDRY_USERNAME` and `FOUNDRY_PASSWORD` instead.
 - `FOUNDRY_LICENSE_KEY` to your Foundry license key.
 - `FOUNDRY_ADMIN_KEY` to the admin password you want for Foundry.
 - `CONTAINER_PRESERVE_CONFIG` to `true` only after you want Foundry options to stop following `.env` changes.
 
-The default `.env` uses rootless-friendly laptop ports:
+The default `.env` exposes only a localhost HTTP origin for Cloudflare:
 
 ```env
-HTTP_PORT=8080
-HTTPS_PORT=8443
+ORIGIN_HTTP_PORT=8080
+FOUNDRY_PROXY_SSL=true
 FOUNDRY_PROXY_PORT=443
 ```
 
-When you port forward, forward external TCP `80` to this laptop's `8080`, and external TCP `443` to this laptop's `8443`. Caddy still receives traffic on container ports `80` and `443`, so ACME HTTP-01 and normal HTTPS work as expected.
+In Cloudflare Tunnel, point the public hostname service at:
+
+```text
+http://localhost:8080
+```
+
+Cloudflare terminates public HTTPS. The connector talks to Caddy over local HTTP.
 
 ## Run
 
@@ -59,7 +68,7 @@ sudo dnf install podman-compose
 Start the stack:
 
 ```bash
-podman compose up -d
+./foundry start
 ```
 
 Watch startup logs:
@@ -74,29 +83,42 @@ Open:
 https://your-foundry-hostname
 ```
 
-For local smoke testing before DNS and port forwarding are complete, set `FOUNDRY_HOSTNAME=localhost` and open:
+For local smoke testing of the origin, open:
 
 ```text
-https://localhost:8443
+http://localhost:8080
 ```
 
-Your browser will warn about Caddy's local certificate unless you install Caddy's local CA.
 
 ## Maintenance
+
+Use the project wrapper for routine lifecycle commands. It preserves named
+volumes and restarts services in dependency-safe order:
+
+```bash
+./foundry start
+./foundry stop
+./foundry restart
+./foundry status
+```
+
+Avoid `podman compose restart` for this stack. Podman Compose can restart the
+proxy while Foundry is in an improper dependency state. The wrapper stops the
+proxy first, stops Foundry, starts Foundry, then starts the proxy.
 
 Pull the newest compatible Foundry v14 container image and restart:
 
 ```bash
 podman compose pull
-podman compose up -d
+./foundry restart
 ```
 
 ## Notes
 
-- Only Caddy publishes host ports. Foundry is reachable only from the private `backend` container network.
+- Only Caddy publishes a localhost HTTP origin port. Foundry is reachable only from the private `backend` container network.
 - The Foundry container is pinned to the v14 major image line, `ghcr.io/felddy/foundryvtt:14`.
-- Caddy will request and renew HTTPS certificates automatically when `FOUNDRY_HOSTNAME` resolves to this host and external ports 80/443 are forwarded to the configured laptop ports.
+- Caddy does not request certificates in this topology. Cloudflare owns public TLS.
 - Foundry data is stored in the `foundry_data` container volume.
-- Rootless Podman may not be allowed to bind privileged host ports `80` and `443`. This setup defaults to `8080` and `8443` for that reason.
+- The origin is bound to `127.0.0.1` by default, so it is intended for the local Cloudflare connector rather than direct internet access.
 
 # foundry

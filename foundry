@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")"
+
+compose() {
+  podman compose "$@"
+}
+
+containers_exist() {
+  podman container exists foundry-vtt && podman container exists foundry-proxy
+}
+
+start_stack() {
+  if containers_exist; then
+    compose start foundry
+    compose start reverse-proxy
+  else
+    compose up -d
+  fi
+}
+
+stop_stack() {
+  compose stop reverse-proxy
+  compose stop foundry
+}
+
+case "${1:-}" in
+  start)
+    start_stack
+    ;;
+  stop)
+    stop_stack
+    ;;
+  restart)
+    stop_stack
+    start_stack
+    ;;
+  status|ps)
+    compose ps
+    ;;
+  logs)
+    shift
+    compose logs "$@"
+    ;;
+  *)
+    cat <<'USAGE'
+Usage: ./foundry <command>
+
+Commands:
+  start     Start Foundry, then the proxy. Creates containers only if missing.
+  stop      Stop the proxy, then Foundry.
+  restart   Stateful restart using safe dependency order.
+  status    Show compose status.
+  ps        Alias for status.
+  logs      Pass through to podman compose logs.
+
+Examples:
+  ./foundry restart
+  ./foundry logs -f
+USAGE
+    exit 2
+    ;;
+esac

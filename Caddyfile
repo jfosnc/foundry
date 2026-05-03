@@ -1,8 +1,4 @@
-{
-	email {$ACME_EMAIL}
-}
-
-{$FOUNDRY_HOSTNAME} {
+http://{$FOUNDRY_HOSTNAME}, :80 {
 	encode zstd gzip
 	reverse_proxy foundry:30000
 }
