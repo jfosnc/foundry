@@ -36,6 +36,7 @@ Edit `.env` and set:
 - `FOUNDRY_RELEASE_URL` to a timed download URL from your Foundry account, or set `FOUNDRY_USERNAME` and `FOUNDRY_PASSWORD` instead.
 - `FOUNDRY_LICENSE_KEY` to your Foundry license key.
 - `FOUNDRY_ADMIN_KEY` to the admin password you want for Foundry.
+- `CONTAINER_PRESERVE_CONFIG` to `true` only after you want Foundry options to stop following `.env` changes.
 
 The default `.env` uses rootless-friendly laptop ports:
 

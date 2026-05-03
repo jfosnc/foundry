@@ -34,7 +34,7 @@ services:
       FOUNDRY_HOSTNAME: ${FOUNDRY_HOSTNAME}
       FOUNDRY_PROXY_SSL: "true"
       FOUNDRY_PROXY_PORT: ${FOUNDRY_PROXY_PORT:-443}
-      CONTAINER_PRESERVE_CONFIG: "true"
+      CONTAINER_PRESERVE_CONFIG: ${CONTAINER_PRESERVE_CONFIG:-false}
     volumes:
       - foundry_data:/data
     expose:
