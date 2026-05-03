@@ -1,0 +1,54 @@
+services:
+  reverse-proxy:
+    image: docker.io/library/caddy:2
+    container_name: foundry-proxy
+    restart: unless-stopped
+    depends_on:
+      - foundry
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    environment:
+      FOUNDRY_HOSTNAME: ${FOUNDRY_HOSTNAME:-localhost}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro,Z
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - frontend
+      - backend
+
+  foundry:
+    image: ghcr.io/felddy/foundryvtt:14
+    container_name: foundry-vtt
+    restart: unless-stopped
+    init: true
+    hostname: foundry
+    environment:
+      FOUNDRY_USERNAME: ${FOUNDRY_USERNAME}
+      FOUNDRY_PASSWORD: ${FOUNDRY_PASSWORD}
+      FOUNDRY_RELEASE_URL: ${FOUNDRY_RELEASE_URL}
+      FOUNDRY_ADMIN_KEY: ${FOUNDRY_ADMIN_KEY}
+      FOUNDRY_LICENSE_KEY: ${FOUNDRY_LICENSE_KEY}
+      FOUNDRY_HOSTNAME: ${FOUNDRY_HOSTNAME}
+      FOUNDRY_PROXY_SSL: "true"
+      FOUNDRY_PROXY_PORT: ${FOUNDRY_PROXY_PORT:-443}
+      CONTAINER_PRESERVE_CONFIG: "true"
+    volumes:
+      - foundry_data:/data
+    expose:
+      - "30000"
+    networks:
+      - backend
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:
+  foundry_data:

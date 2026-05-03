@@ -1,0 +1,26 @@
+# Local environment files may contain Foundry credentials, release URLs,
+# license keys, admin passwords, hostnames, and ACME contact details.
+.env
+.env.*
+!.env.example
+
+# Local secret material.
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+*.jks
+secrets/
+
+# Local backups often capture filled-in environment files.
+*.bak
+*.backup
+*~
+
+# Ignore bind-mounted runtime data if the stack is ever switched from named
+# volumes to local directories.
+data/
+foundry-data/
+caddy-data/
+caddy-config/
